@@ -1,0 +1,5 @@
+Uvicorn
+Streamlit
+FastAPI
+Python
+SQLITE
