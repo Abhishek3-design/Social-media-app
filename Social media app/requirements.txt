@@ -1,4 +1,0 @@
-Uvicorn
-Streamlit
-FastAPI
-SQLITE
