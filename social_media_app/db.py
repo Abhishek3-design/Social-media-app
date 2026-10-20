@@ -1,6 +1,7 @@
 from collections.abc import AsyncGenerator
 import uuid
 from datetime import datetime
+import os
 
 from fastapi import Depends
 from fastapi_users.db import (
@@ -27,7 +28,16 @@ from sqlalchemy.ext.asyncio import (
 from sqlalchemy.orm import DeclarativeBase, relationship
 
 
-DATABASE_URL = "sqlite+aiosqlite:///./test.db"
+DATABASE_URL = os.environ["DATABASE_URL"]
+
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace(
+        "postgres://", "postgresql+asyncpg://", 1
+    )
+elif DATABASE_URL.startswith("postgresql://"):
+    DATABASE_URL = DATABASE_URL.replace(
+        "postgresql://", "postgresql+asyncpg://", 1
+    )
 
 
 class Base(DeclarativeBase):
@@ -218,8 +228,10 @@ class Comment(Base):
 # Database
 # =========================
 
+
 engine = create_async_engine(
-    DATABASE_URL
+    DATABASE_URL,
+    pool_pre_ping=True
 )
 
 async_session_maker = async_sessionmaker(
