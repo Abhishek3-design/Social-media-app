@@ -1,0 +1,27 @@
+[project]
+name = "pythonproject2"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "abhishek", email = "abhishekdyadav6@gmail.com" }
+]
+requires-python = ">=3.14"
+dependencies = [
+    "aiosqlite>=0.22.1",
+    "async>=0.6.2",
+    "fastapi>=0.142.2",
+    "fastapi-users[sqlalchemy]>=15.0.5",
+    "imagekitio>=5.10.0",
+    "python-dotenv>=1.2.4",
+    "schemas>=0.7.1",
+    "streamlit>=1.65.0",
+    "uvicorn[standard]>=0.54.0",
+]
+
+[project.scripts]
+pythonproject2 = "pythonproject2:main"
+
+[build-system]
+requires = ["uv_build>=0.12.22,<0.13.0"]
+build-backend = "uv_build"
