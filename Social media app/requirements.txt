@@ -9,3 +9,4 @@ imagekitio
 python-dotenv
 streamlit
 pydantic
+requests
