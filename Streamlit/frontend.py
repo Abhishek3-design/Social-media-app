@@ -111,7 +111,11 @@ def login_page():
                     },
                     timeout=10
                 )
-
+               
+                st.write("Login HTTP status:", response.status_code)
+                st.write("Response content type:", response.headers.get("content-type"))
+                st.code(response.text[:1000] or "(empty response)")
+               
                 if response.status_code == 200:
 
                     token_data = response.json()
