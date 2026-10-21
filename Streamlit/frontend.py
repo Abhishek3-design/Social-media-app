@@ -8,7 +8,7 @@ import urllib.parse
 # CONFIGURATION
 # ============================================================
 
-API_URL = "http://localhost:8000"
+API_URL = st.secrets["API_URL"].rstrip("/")
 
 st.set_page_config(
     page_title="Simple Social",
