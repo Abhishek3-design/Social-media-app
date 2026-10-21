@@ -103,20 +103,60 @@ def login_page():
 
             try:
 
+                
                 response = requests.post(
                     f"{API_URL}/auth/jwt/login",
                     data={
                         "username": email,
                         "password": password
                     },
-                    timeout=10
+                    timeout=20,
+                    allow_redirects=False
                 )
-               
-                st.write("Login HTTP status:", response.status_code)
-                st.write("Response content type:", response.headers.get("content-type"))
+
+                st.write("Configured API URL:", API_URL)
+                st.write("Requested URL:", f"{API_URL}/auth/jwt/login")
+                st.write("HTTP status:", response.status_code)
+                st.write("Content type:", response.headers.get("content-type"))
+                st.write("Redirect location:", response.headers.get("location"))
                 st.code(response.text[:1000] or "(empty response)")
-               
+
                 if response.status_code == 200:
+                    content_type = response.headers.get("content-type", "")
+
+                    if "application/json" not in content_type.lower():
+                        st.error(
+                            "The login endpoint returned HTML instead of JSON. "
+                            "Check the Vercel backend deployment and routing."
+                        )
+                        return
+
+                    token_data = response.json()
+
+                    if "access_token" not in token_data:
+                        st.error("The JSON response does not contain access_token.")
+                        return
+
+                    st.session_state.token = token_data["access_token"]
+
+                    user_response = requests.get(
+                        f"{API_URL}/users/me",
+                        headers=get_headers(),
+                        timeout=20
+                    )
+
+                    if user_response.status_code == 200:
+                        st.session_state.user = user_response.json()
+                        st.rerun()
+                    else:
+                        st.session_state.token = None
+                        st.error(
+                            f"Failed to get user information: "
+                            f"{get_error(user_response)}"
+                        )
+                else:
+                    st.error(f"Login failed: {get_error(response)}")
+
 
                     token_data = response.json()
 
