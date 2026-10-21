@@ -1,4 +1,6 @@
+
 from collections.abc import AsyncGenerator
+import os
 import uuid
 from datetime import datetime
 
@@ -17,17 +19,43 @@ from sqlalchemy import (
     Uuid,
     UniqueConstraint,
 )
-
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     create_async_engine,
     async_sessionmaker,
 )
-
 from sqlalchemy.orm import DeclarativeBase, relationship
 
 
-DATABASE_URL = "sqlite+aiosqlite:///./test.db"
+# =========================
+# Database configuration
+# =========================
+
+DATABASE_URL = os.environ.get("DATABASE_URL")
+
+if not DATABASE_URL:
+    raise RuntimeError(
+        "DATABASE_URL is missing. Configure your Neon database URL."
+    )
+
+# Use the async PostgreSQL driver for Neon.
+if DATABASE_URL.startswith("postgresql://"):
+    DATABASE_URL = DATABASE_URL.replace(
+        "postgresql://",
+        "postgresql+asyncpg://",
+        1,
+    )
+elif DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace(
+        "postgres://",
+        "postgresql+asyncpg://",
+        1,
+    )
+
+if not DATABASE_URL.startswith("postgresql+asyncpg://"):
+    raise RuntimeError(
+        "DATABASE_URL must be a PostgreSQL connection string for Neon."
+    )
 
 
 class Base(DeclarativeBase):
@@ -39,7 +67,6 @@ class Base(DeclarativeBase):
 # =========================
 
 class User(SQLAlchemyBaseUserTableUUID, Base):
-
     posts = relationship(
         "Post",
         back_populates="user",
@@ -66,55 +93,20 @@ class User(SQLAlchemyBaseUserTableUUID, Base):
 class Post(Base):
     __tablename__ = "posts"
 
-    id = Column(
-        Uuid(as_uuid=True),
-        primary_key=True,
-        default=uuid.uuid4,
-    )
-
-    user_id = Column(
-        Uuid(as_uuid=True),
-        ForeignKey("user.id"),
-        nullable=False,
-    )
-
+    id = Column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(Uuid(as_uuid=True), ForeignKey("user.id"), nullable=False)
     caption = Column(Text)
+    url = Column(String, nullable=False)
+    file_type = Column(String, nullable=False)
+    file_name = Column(String, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
 
-    url = Column(
-        String,
-        nullable=False,
-    )
-
-    file_type = Column(
-        String,
-        nullable=False,
-    )
-
-    file_name = Column(
-        String,
-        nullable=False,
-    )
-
-    created_at = Column(
-        DateTime,
-        default=datetime.utcnow,
-    )
-
-    user = relationship(
-        "User",
-        back_populates="posts",
-    )
-
+    user = relationship("User", back_populates="posts")
     likes = relationship(
-        "Like",
-        back_populates="post",
-        cascade="all, delete-orphan",
+        "Like", back_populates="post", cascade="all, delete-orphan"
     )
-
     comments = relationship(
-        "Comment",
-        back_populates="post",
-        cascade="all, delete-orphan",
+        "Comment", back_populates="post", cascade="all, delete-orphan"
     )
 
 
@@ -125,30 +117,11 @@ class Post(Base):
 class Like(Base):
     __tablename__ = "likes"
 
-    id = Column(
-        Uuid(as_uuid=True),
-        primary_key=True,
-        default=uuid.uuid4,
-    )
+    id = Column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(Uuid(as_uuid=True), ForeignKey("user.id"), nullable=False)
+    post_id = Column(Uuid(as_uuid=True), ForeignKey("posts.id"), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
 
-    user_id = Column(
-        Uuid(as_uuid=True),
-        ForeignKey("user.id"),
-        nullable=False,
-    )
-
-    post_id = Column(
-        Uuid(as_uuid=True),
-        ForeignKey("posts.id"),
-        nullable=False,
-    )
-
-    created_at = Column(
-        DateTime,
-        default=datetime.utcnow,
-    )
-
-    # One user can like a post only once
     __table_args__ = (
         UniqueConstraint(
             "user_id",
@@ -157,15 +130,8 @@ class Like(Base):
         ),
     )
 
-    user = relationship(
-        "User",
-        back_populates="likes",
-    )
-
-    post = relationship(
-        "Post",
-        back_populates="likes",
-    )
+    user = relationship("User", back_populates="likes")
+    post = relationship("Post", back_populates="likes")
 
 
 # =========================
@@ -175,51 +141,23 @@ class Like(Base):
 class Comment(Base):
     __tablename__ = "comments"
 
-    id = Column(
-        Uuid(as_uuid=True),
-        primary_key=True,
-        default=uuid.uuid4,
-    )
+    id = Column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(Uuid(as_uuid=True), ForeignKey("user.id"), nullable=False)
+    post_id = Column(Uuid(as_uuid=True), ForeignKey("posts.id"), nullable=False)
+    content = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
 
-    user_id = Column(
-        Uuid(as_uuid=True),
-        ForeignKey("user.id"),
-        nullable=False,
-    )
-
-    post_id = Column(
-        Uuid(as_uuid=True),
-        ForeignKey("posts.id"),
-        nullable=False,
-    )
-
-    content = Column(
-        Text,
-        nullable=False,
-    )
-
-    created_at = Column(
-        DateTime,
-        default=datetime.utcnow,
-    )
-
-    user = relationship(
-        "User",
-        back_populates="comments",
-    )
-
-    post = relationship(
-        "Post",
-        back_populates="comments",
-    )
+    user = relationship("User", back_populates="comments")
+    post = relationship("Post", back_populates="comments")
 
 
 # =========================
-# Database
+# Database engine and sessions
 # =========================
 
 engine = create_async_engine(
-    DATABASE_URL
+    DATABASE_URL,
+    pool_pre_ping=True,
 )
 
 async_session_maker = async_sessionmaker(
@@ -229,28 +167,16 @@ async_session_maker = async_sessionmaker(
 
 
 async def create_db_and_tables():
-
     async with engine.begin() as conn:
-
-        await conn.run_sync(
-            Base.metadata.create_all
-        )
+        await conn.run_sync(Base.metadata.create_all)
 
 
 async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
-
     async with async_session_maker() as session:
-
         yield session
 
 
 async def get_user_db(
-    session: AsyncSession = Depends(
-        get_async_session
-    ),
+    session: AsyncSession = Depends(get_async_session),
 ):
-
-    yield SQLAlchemyUserDatabase(
-        session,
-        User
-    )
+    yield SQLAlchemyUserDatabase(session, User)
