@@ -121,20 +121,18 @@ def login_page():
                 st.write("Redirect location:", response.headers.get("location"))
                 st.code(response.text[:1000] or "(empty response)")
 
+                
                 if response.status_code == 200:
                     content_type = response.headers.get("content-type", "")
 
                     if "application/json" not in content_type.lower():
-                        st.error(
-                            "The login endpoint returned HTML instead of JSON. "
-                            "Check the Vercel backend deployment and routing."
-                        )
+                        st.error("Login returned HTML instead of JSON.")
                         return
 
                     token_data = response.json()
 
                     if "access_token" not in token_data:
-                        st.error("The JSON response does not contain access_token.")
+                        st.error("Response does not contain access_token.")
                         return
 
                     st.session_state.token = token_data["access_token"]
@@ -151,12 +149,16 @@ def login_page():
                     else:
                         st.session_state.token = None
                         st.error(
-                            f"Failed to get user information: "
-                            f"{get_error(user_response)}"
+                            "Failed to get user information: "
+                            + get_error(user_response)
                         )
                 else:
                     st.error(f"Login failed: {get_error(response)}")
 
+
+
+
+                    
 
                     token_data = response.json()
 
