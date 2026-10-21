@@ -95,75 +95,78 @@ def login_page():
     # ========================================================
 
     with col1:
+
         if st.button(
             "🔐 Login",
             type="primary",
             use_container_width=True
         ):
+
             try:
+
                 response = requests.post(
                     f"{API_URL}/auth/jwt/login",
                     data={
                         "username": email,
                         "password": password
                     },
-                    timeout=20,
-                    allow_redirects=False
+                    timeout=10
                 )
 
-                st.write("Configured API URL:", API_URL)
-                st.write("HTTP status:", response.status_code)
-                st.write("Content type:", response.headers.get("content-type"))
-                st.write("Redirect location:", response.headers.get("location"))
+                if response.status_code == 200:
 
-                if response.status_code != 200:
-                    st.error(f"Login failed: {get_error(response)}")
-                    st.code(response.text[:1000])
-                    return
+                    token_data = response.json()
 
-                content_type = response.headers.get("content-type", "")
+                    st.session_state.token = (
+                        token_data["access_token"]
+                    )
 
-                if "application/json" not in content_type.lower():
-                    st.error("Login returned HTML instead of JSON.")
-                    st.code(response.text[:1000])
-                    return
+                    user_response = requests.get(
+                        f"{API_URL}/users/me",
+                        headers=get_headers(),
+                        timeout=10
+                    )
 
-                token_data = response.json()
-                access_token = token_data.get("access_token")
+                    if user_response.status_code == 200:
 
-                if not access_token:
-                    st.error("The login response has no access token.")
-                    return
+                        st.session_state.user = (
+                            user_response.json()
+                        )
 
-                st.session_state.token = access_token
+                        st.rerun()
 
-                user_response = requests.get(
-                    f"{API_URL}/users/me",
-                    headers=get_headers(),
-                    timeout=20
-                )
+                    else:
 
-                if user_response.status_code == 200:
-                    st.session_state.user = user_response.json()
-                    st.rerun()
+                        st.session_state.token = None
+
+                        st.error(
+                            "Failed to get user information: "
+                            f"{get_error(user_response)}"
+                        )
+
                 else:
-                    st.session_state.token = None
+
                     st.error(
-                        "Failed to get user information: "
-                        + get_error(user_response)
+                        f"Login failed: {get_error(response)}"
                     )
 
             except requests.ConnectionError:
-                st.error("Cannot connect to FastAPI.")
+
+                st.error(
+                    "❌ Cannot connect to FastAPI."
+                )
 
             except requests.Timeout:
-                st.error("Login request timed out.")
+
+                st.error(
+                    "⏱️ Login request timed out."
+                )
 
             except requests.RequestException as e:
-                st.error(f"Login request failed: {e}")
 
-            except ValueError:
-                st.error("The server returned an invalid JSON response.")
+                st.error(
+                    f"Login request failed: {e}"
+                )
 
 
     # ========================================================
