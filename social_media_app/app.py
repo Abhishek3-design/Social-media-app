@@ -95,7 +95,7 @@ app = FastAPI(lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "https://https://vercel.com/abhi-8047/social-media-frontend",
+        "https://https://social-media-frontend-five-lilac.vercel.app/",
         "http://localhost:5500",
         "http://127.0.0.1:5500",
     ],
